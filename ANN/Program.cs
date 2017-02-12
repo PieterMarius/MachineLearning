@@ -13,15 +13,15 @@ namespace MachineLearning
 
             //TestExp();
 
-            int T = 35000;
+            int T =200000;
             int nFeature = 784;
             int nLabel = 10;
             int nLayer = 3;
             double momentum = 0.0;
-            IFunction type = new Sigmoid(0.666666, 0.0);
+            IFunction type = new Sigmoid(1.0, 0.0);
             //IFunction type = new Tanh(0.666666, 1.7159, 0.0);
 
-            double[] eta = new double[] { 3.5, 3.5, 3.5 };
+            double[] eta = new double[] { 3.0, 3.0, 3.0 };
             int[] nodeLayer = new int[] { nFeature, 100, nLabel };
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
@@ -39,13 +39,13 @@ namespace MachineLearning
             network.DimBatch = 10;
             network.DimBatchMax = 20;
             network.DimBatchMin = 10;
-            network.Thread = 4;
+            network.Thread = 6;
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Reset();
             stopwatch.Start();
 
-            network.Train(dataMatrix, labelMatrix, 0.0001);
+            network.Train(dataMatrix, labelMatrix, 0.00001);
 
             stopwatch.Stop();
             Console.WriteLine("Train Elapsed={0}", stopwatch.ElapsedMilliseconds * 0.001);
@@ -181,6 +181,42 @@ namespace MachineLearning
         {
             return Math.Abs(v1 - v0);
         }
+
+        //void TestNumeric()
+        //{
+        //    int nvalue = 10000000;
+        //    stopwatch.Reset();
+        //    stopwatch.Start();
+        //    System.Numerics.Vector3[] testVector = new System.Numerics.Vector3[nvalue];
+
+        //    //double[] vv = new double[] { 0.0, 0.0, 0.0, 0.0 };
+        //    for (int i = 0; i < nvalue; i++)
+        //        testVector[i] = new System.Numerics.Vector3(0, 0, 0);
+
+        //    System.Numerics.Vector3 test;
+        //    for (int i = 0; i < nvalue; i++)
+        //        test = testVector[i] * 1.0f;
+
+        //    stopwatch.Stop();
+        //    Console.WriteLine("Engine Elapsed={0}", stopwatch.ElapsedMilliseconds);
+
+        //    stopwatch.Reset();
+        //    stopwatch.Start();
+
+        //    PhysicsEngineMathUtility.Vector3[] testVector1 = new PhysicsEngineMathUtility.Vector3[nvalue];
+
+        //    for (int i = 0; i < nvalue; i++)
+        //        testVector1[i] = new PhysicsEngineMathUtility.Vector3(0.0, 0.0, 0.0);
+
+        //    PhysicsEngineMathUtility.Vector3 test1;
+        //    for (int i = 0; i < nvalue; i++)
+        //        test1 = testVector1[i] * 1.0;
+
+        //    stopwatch.Stop();
+        //    Console.WriteLine("Engine Elapsed={0}", stopwatch.ElapsedMilliseconds);
+
+
+        //}
 
         #endregion
     }
