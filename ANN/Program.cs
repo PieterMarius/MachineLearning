@@ -13,16 +13,16 @@ namespace MachineLearning
 
             //TestExp();
 
-            int T =200000;
+            int T =40000;
             int nFeature = 784;
             int nLabel = 10;
-            int nLayer = 3;
             double momentum = 0.0;
             IFunction type = new Sigmoid(1.0, 0.0);
             //IFunction type = new Tanh(0.666666, 1.7159, 0.0);
 
-            double[] eta = new double[] { 3.0, 3.0, 3.0 };
-            int[] nodeLayer = new int[] { nFeature, 100, nLabel };
+            double[] eta = new double[] { 3.0, 3.0, 3.0, 3.0 };
+            double[] dropoutValue = new double[] { 0.8, 0.5, 0.5 };
+            int[] nodeLayer = new int[] { nFeature, 1024, 500, nLabel };
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
 
@@ -35,7 +35,14 @@ namespace MachineLearning
             readDataset("testmnist.dat", new[] { "  " }, ref testDataMatrix);
             readDataset("tlabeltest.dat", new[] { " " }, ref testLabelMatrix);
 
-            ANN network = new ANN(T, nLayer, nodeLayer, eta, momentum, type);
+            ANN network = new ANN(
+                T, 
+                nodeLayer, 
+                eta, 
+                momentum, 
+                dropoutValue, 
+                type);
+
             network.DimBatch = 10;
             network.DimBatchMax = 20;
             network.DimBatchMin = 10;

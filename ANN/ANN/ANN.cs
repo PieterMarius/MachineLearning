@@ -11,12 +11,13 @@ namespace MachineLearning
         public int Ephocs { get; private set; }
         public int Layer { get; private set; }
         public int[] NodeLayer { get; private set; }
-        public double[] Eta { get; private set; }
+        public double[] LearningRate { get; private set; }
         public double Momentum { get; private set; }
         public int DimBatch { get; set; }
         public int DimBatchMin { get; set; }
         public int DimBatchMax { get; set; }
-        public IFunction ActivationFunc { get; set; }
+        public IFunction ActivationFunc { get; private set; }
+        public double[] DropoutValue { get; private set; }
 
         public int Thread { get; set; }
 
@@ -24,7 +25,6 @@ namespace MachineLearning
 
         #region Private Fields
 
-        private int TotalNode;
         private int[] WeigthLayer;
         private double[][] Weigth;
         private double[][] Bias;
@@ -34,6 +34,7 @@ namespace MachineLearning
         private double[][] Delta;
         private double[][] DeltaWeigth;
         private double[][] OldDeltaWeigth;
+        private bool[][] Dropout;
         private double[] Error;
         private double[] EtaQ;
         private int[][] IndexBuffer;
@@ -43,19 +44,67 @@ namespace MachineLearning
         #region Constructor
 
         public ANN(
-            int t,
-            int nLayer,
+            int ephocs,
             int[] nodeLayer,
-            double[] eta,
+            double learningRate,
             double momentum,
             IFunction activationFunc)
         {
-            Ephocs = t;
-            Layer = nLayer;
+            Ephocs = ephocs;
+            Layer = nodeLayer.Length;
             NodeLayer = nodeLayer;
-            Eta = eta;
             Momentum = momentum;
             ActivationFunc = activationFunc;
+            DropoutValue = new double[Layer];
+
+            LearningRate = new double[Layer];
+            for (int i = 0; i < Layer; i++)
+            {
+                LearningRate[i] = learningRate;
+                DropoutValue[i] = 1.0;
+            }
+
+            InitVariables();
+        }
+
+        public ANN(
+            int ephocs,
+            int[] nodeLayer,
+            double[] learningRate,
+            double momentum,
+            IFunction activationFunc)
+        {
+            Ephocs = ephocs;
+            Layer = nodeLayer.Length;
+            NodeLayer = nodeLayer;
+            LearningRate = learningRate;
+            Momentum = momentum;
+            ActivationFunc = activationFunc;
+            DropoutValue = new double[Layer];
+
+            for (int i = 0; i < Layer; i++)
+            {
+                DropoutValue[i] = 1.0;
+            }
+
+            InitVariables();
+        }
+
+        public ANN(
+            int ephocs,
+            int[] nodeLayer,
+            double[] learningRate,
+            double momentum,
+            double[] dropoutValue,
+            IFunction activationFunc)
+        {
+            Ephocs = ephocs;
+            Layer = nodeLayer.Length;
+            NodeLayer = nodeLayer;
+            LearningRate = learningRate;
+            Momentum = momentum;
+            ActivationFunc = activationFunc;
+            DropoutValue = dropoutValue;
 
             InitVariables();
         }
@@ -86,7 +135,7 @@ namespace MachineLearning
 
                 UpdateWeigth(q);
 
-                //Parte da sistemare
+                #region Parte da sistemare
                 if (i % 1000 == 0 || 
                     i + 1 == Ephocs)
                 {
@@ -109,18 +158,51 @@ namespace MachineLearning
 
                     if (mse < exitValue) break;
                 }
+                #endregion
             }
         }
 
         public double[] GetNetworkOutput(
             double[] input)
         {
-            ExecuteInternalNetworkOutput(input);
+            GetANNLayerOutput(Layer, input);
 
             double[] output = new double[NodeLayer[Layer - 1]];
             NodeStatus[Layer - 1].CopyTo(output, 0);
 
             return output;
+        }
+
+        public double[] GetNetworkOutput(
+            int layer,
+            double[] input)
+        {
+            GetANNLayerOutput(layer, input);
+
+            double[] output = new double[NodeLayer[layer - 1]];
+            NodeStatus[layer - 1].CopyTo(output, 0);
+
+            return output;
+        }
+
+        public double[][] GetWeigth()
+        {
+            return Weigth;
+        }
+
+        public double[][] GetBias()
+        {
+            return Bias;
+        }
+
+        public void SetBias(double[][] bias)
+        {
+            Bias = bias;
+        }
+
+        public void SetWeigth(double[][] weigth)
+        {
+            Weigth = weigth;
         }
 
         #endregion
@@ -131,7 +213,7 @@ namespace MachineLearning
             double[] input,
             double[] output)
         {
-            ExecuteInternalNetworkOutput(input);
+            ExecuteInternalNetworkOutput(Layer, input);
 
             //Forward error calculation
             Parallel.For(0, NodeLayer[Layer - 1], new ParallelOptions { MaxDegreeOfParallelism = Thread },
@@ -150,14 +232,18 @@ namespace MachineLearning
             //Delta hidden layer
             for (int z = Layer - 2; z > 0; z--)
             {
+                int nLayer = z + 1;
                 Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                     j =>
-                    { //layer node
+                    {   //layer node
                         double s = 0.0;
-                        int nLayer = z + 1;
                         for (int h = 0; h < NodeLayer[nLayer]; h++)
-                        { //weight number 
-                            s += Delta[nLayer][h] * Weigth[z][(h * NodeLayer[z]) + j];
+                        {
+                            int index = (h * NodeLayer[z]) + j;
+                            if (!Dropout[z][index])
+                            {
+                                s += Delta[nLayer][h] * Weigth[z][index];
+                            }  
                         }
                         Delta[z][j] = s * ActivationFunc.GetDerivative(Net[z][j]);
                     });
@@ -181,8 +267,7 @@ namespace MachineLearning
             }
         }
 
-        private void UpdateWeigth(
-            double q)
+        private void UpdateWeigth(double q)
         {
             for (int z = 0; z < Layer - 1; z++)
             {
@@ -190,9 +275,12 @@ namespace MachineLearning
                 Parallel.For(0, WeigthLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                     h =>
                     {
-                        double buf = etaQ * DeltaWeigth[z][h] + (Momentum * OldDeltaWeigth[z][h]);
-                        Weigth[z][h] -= buf;
-                        OldDeltaWeigth[z][h] = buf;
+                        if (!Dropout[z][h])
+                        {
+                            double buf = etaQ * DeltaWeigth[z][h] + (Momentum * OldDeltaWeigth[z][h]);
+                            Weigth[z][h] -= buf;
+                            OldDeltaWeigth[z][h] = buf;
+                        }
                     });
             }
 
@@ -214,25 +302,65 @@ namespace MachineLearning
         }
 
         private void ExecuteInternalNetworkOutput(
+            int layerNumber,
             double[] input)
         {
             //Input Layer
-            for (int z = 0; z < NodeLayer[0]; z++)
-                NodeStatus[0][z] = input[z];
+            Array.Copy(input, NodeStatus[0], NodeStatus[0].Length);
 
             //output node status
-            for (int z = 1; z < Layer; z++)
+            for (int z = 1; z < layerNumber; z++)
             {
+                int nLayer = z - 1;
                 Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                 j =>
                 {
                     double s = 0.0;
-                    int nLayer = z - 1;
+                    int nodeLayer = NodeLayer[nLayer] * j;
+
+                    if (DropoutValue[nLayer] < 1.0)
+                    {
+                        for (int h = 0; h < NodeLayer[nLayer]; h++)
+                        {
+                            Dropout[nLayer][nodeLayer + h] = Helper.GetRandomBernoulli(DropoutValue[nLayer]);
+                            if (!Dropout[nLayer][nodeLayer + h])
+                                s += NodeStatus[nLayer][h] * Weigth[nLayer][nodeLayer + h];
+                        }
+                    }
+                    else
+                    {
+                        for (int h = 0; h < NodeLayer[nLayer]; h++)
+                        {
+                            s += NodeStatus[nLayer][h] * Weigth[nLayer][nodeLayer + h];
+                        }
+                    }
+
+                    Net[z][j] = s + Bias[z][j];
+                    NodeStatus[z][j] = ActivationFunc.GetResult(Net[z][j]);
+                });
+            }
+        }
+
+        private void GetANNLayerOutput(
+            int layerNumber,
+            double[] input)
+        {
+            //Input Layer
+            Array.Copy(input, NodeStatus[0], NodeStatus[0].Length);
+
+            //output node status
+            for (int z = 1; z < layerNumber; z++)
+            {
+                int nLayer = z - 1;
+                Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                j =>
+                {
+                    double s = 0.0;
                     int nodeLayer = NodeLayer[nLayer] * j;
 
                     for (int h = 0; h < NodeLayer[nLayer]; h++)
-                        s += NodeStatus[nLayer][h] * Weigth[nLayer][nodeLayer + h];
-
+                        s += NodeStatus[nLayer][h] * Weigth[nLayer][nodeLayer + h] * DropoutValue[nLayer];
+                   
                     Net[z][j] = s + Bias[z][j];
                     NodeStatus[z][j] = ActivationFunc.GetResult(Net[z][j]);
                 });
@@ -241,11 +369,9 @@ namespace MachineLearning
 
         private void InitVariables()
         {
-            for (int i = 0; i < Layer; i++)
-                TotalNode += NodeLayer[i];
-
             WeigthLayer = new int[Layer - 1];
             Weigth = new double[Layer - 1][];
+            Dropout = new bool[Layer - 1][];
             DeltaWeigth = new double[Layer - 1][];
             OldDeltaWeigth = new double[Layer - 1][];
             IndexBuffer = new int[Layer - 1][];
@@ -264,11 +390,13 @@ namespace MachineLearning
                 DeltaWeigth[i] = new double[WeigthLayer[i]];
                 OldDeltaWeigth[i] = new double[WeigthLayer[i]];
                 IndexBuffer[i] = new int[WeigthLayer[i]];
+                Dropout[i] = new bool[WeigthLayer[i]];
 
                 for (int j = 0; j < WeigthLayer[i]; j++)
                 { 
                     Weigth[i][j] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
                     IndexBuffer[i][j] = (int)Math.Floor((double)(j / NodeLayer[i]));
+                    Dropout[i][j] = false;
                 }
             }
 
@@ -290,14 +418,13 @@ namespace MachineLearning
         private void SetEtaQ(double q)
         {
             for (int i = 0; i < Layer; i++)
-                EtaQ[i] = Eta[i] * q;
+                EtaQ[i] = LearningRate[i] * q;
         }
 
         private double GetMSE(
             double[][] input, 
             double[][] output)
         {
-            //MSE
             double total = 0.0;
             for (int i = 0; i < input.Length; i++)
             {

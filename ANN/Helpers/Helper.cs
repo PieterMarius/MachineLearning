@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace MachineLearning.Helpers
 {
@@ -12,6 +13,16 @@ namespace MachineLearning.Helpers
 
         #endregion
 
+        static int seed = Environment.TickCount;
+
+        static readonly ThreadLocal<Random> randomThread =
+            new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
+
+        public static double Rand()
+        {
+            return randomThread.Value.NextDouble();
+        }
+
         public static double GetRandom(double min, double max)
         {
             lock (syncLock)
@@ -23,14 +34,26 @@ namespace MachineLearning.Helpers
         public static double GetRandomGaussian(
             double mean, 
             double stdDev)
-        { 
-            double u1 = 1.0 - random.NextDouble(); //uniform(0,1] random doubles
-            double u2 = 1.0 - random.NextDouble();
-            double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) *
-                         Math.Sin(2.0 * Math.PI * u2); //random normal(0,1)
+        {
+            lock (syncLock)
+            {
+                double u1 = 1.0 - random.NextDouble(); //uniform(0,1] random doubles
+                double u2 = 1.0 - random.NextDouble();
+                double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) *
+                             Math.Sin(2.0 * Math.PI * u2); //random normal(0,1)
 
-            return mean + (stdDev * stdDev) * randStdNormal;
+                return mean + (stdDev * stdDev) * randStdNormal;
+            }
         }
+
+        public static bool GetRandomBernoulli(double p)
+        {
+            if (Rand() < p)
+                return false;
+            else
+                return true;
+        }
+
         /// <summary>
         /// Gets random int.
         /// </summary>

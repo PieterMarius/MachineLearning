@@ -74,9 +74,9 @@
       <DependentUpon>FunctionType.cs</DependentUpon>
     </Compile>
     <Compile Include="Helpers\Helper.cs" />
-    <Compile Include="Helpers\IFunction.cs" />
-    <Compile Include="Helpers\Sigmoid.cs" />
-    <Compile Include="Helpers\Tanh.cs" />
+    <Compile Include="Helpers\Function\IFunction.cs" />
+    <Compile Include="Helpers\Function\Sigmoid.cs" />
+    <Compile Include="Helpers\Function\Tanh.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
