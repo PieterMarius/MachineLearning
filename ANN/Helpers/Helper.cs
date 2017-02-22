@@ -48,10 +48,7 @@ namespace MachineLearning.Helpers
 
         public static bool GetRandomBernoulli(double p)
         {
-            if (Rand() < p)
-                return false;
-            else
-                return true;
+            return (Rand() < p) ? false : true;
         }
 
         /// <summary>

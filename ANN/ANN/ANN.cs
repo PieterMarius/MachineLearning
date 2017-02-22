@@ -13,13 +13,10 @@ namespace MachineLearning
         public int[] NodeLayer { get; private set; }
         public double[] LearningRate { get; private set; }
         public double Momentum { get; private set; }
-        public int DimBatch { get; set; }
-        public int DimBatchMin { get; set; }
-        public int DimBatchMax { get; set; }
+        public int DimBatch { get; private set; }
         public IFunction ActivationFunc { get; private set; }
         public double[] DropoutValue { get; private set; }
-
-        public int Thread { get; set; }
+        public int Thread { get; private set; }
 
         #endregion
 
@@ -43,6 +40,27 @@ namespace MachineLearning
 
         #region Constructor
 
+        public ANN(
+            int ephocs,
+            int[] nodeLayer,
+            double[] learningRate,
+            double momentum,
+            double[] dropoutValue,
+            IFunction activationFunc,
+            int batch)
+        {
+            Ephocs = ephocs;
+            Layer = nodeLayer.Length;
+            NodeLayer = nodeLayer;
+            LearningRate = learningRate;
+            Momentum = momentum;
+            ActivationFunc = activationFunc;
+            DropoutValue = dropoutValue;
+            DimBatch = batch;
+
+            InitVariables();
+        }
+        
         public ANN(
             int ephocs,
             int[] nodeLayer,
@@ -89,26 +107,7 @@ namespace MachineLearning
 
             InitVariables();
         }
-
-        public ANN(
-            int ephocs,
-            int[] nodeLayer,
-            double[] learningRate,
-            double momentum,
-            double[] dropoutValue,
-            IFunction activationFunc)
-        {
-            Ephocs = ephocs;
-            Layer = nodeLayer.Length;
-            NodeLayer = nodeLayer;
-            LearningRate = learningRate;
-            Momentum = momentum;
-            ActivationFunc = activationFunc;
-            DropoutValue = dropoutValue;
-
-            InitVariables();
-        }
-
+        
         #endregion
 
         #region Public Methods
@@ -118,7 +117,6 @@ namespace MachineLearning
             double[][] output,
             double exitValue)
         {
-            double mse, oldmse = 1.0;
             int index;
             double q = 1.0 / DimBatch;
             SetEtaQ(q);
@@ -134,31 +132,6 @@ namespace MachineLearning
                 }
 
                 UpdateWeigth(q);
-
-                #region Parte da sistemare
-                if (i % 1000 == 0 || 
-                    i + 1 == Ephocs)
-                {
-                    mse = GetMSE(input, output);
-
-                    //------------------------------------
-                    Console.WriteLine("nIter " + i + " mse: " + mse);
-
-                    if (mse >= oldmse || i + 110 > Ephocs)
-                    {
-                        DimBatch = DimBatchMax;
-                        Console.WriteLine("dimbatch " + DimBatch);
-                    }
-                    else
-                    {
-                        DimBatch = DimBatchMin;
-                        Console.WriteLine("dimbatch " + DimBatch);
-                    }
-                    oldmse = mse;
-
-                    if (mse < exitValue) break;
-                }
-                #endregion
             }
         }
 
@@ -205,6 +178,31 @@ namespace MachineLearning
             Weigth = weigth;
         }
 
+        public void SetThread(int thread)
+        {
+            Thread = thread;
+        }
+
+        public double GetNetworkMSE(
+            double[][] input,
+            double[][] output)
+        {
+            double total = 0.0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                GetNetworkOutput(input[i]);
+                double buf = 0.0;
+                for (int z = 0; z < NodeLayer[Layer - 1]; z++)
+                {
+                    double err = NodeStatus[Layer - 1][z] - output[i][z];
+                    buf += err * err;
+                }
+                total += buf / NodeLayer[Layer - 1];
+            }
+
+            return total / input.Length;
+        }
+
         #endregion
 
         #region Private Methods
@@ -215,7 +213,16 @@ namespace MachineLearning
         {
             ExecuteInternalNetworkOutput(Layer, input);
 
-            //Forward error calculation
+            ForwardError(output);
+
+            ExecuteBackpropagation();
+        }
+
+        /// <summary>
+        /// Forward error calculation
+        /// </summary>
+        private void ForwardError(double[] output)
+        {
             Parallel.For(0, NodeLayer[Layer - 1], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                 z =>
                 {
@@ -223,10 +230,11 @@ namespace MachineLearning
                     Error[z] = err;
                     Delta[Layer - 1][z] = err * ActivationFunc.GetDerivative(Net[Layer - 1][z]);
                 });
-
-            ExecuteBackpropagation();
         }
 
+        /// <summary>
+        /// Backpropagation
+        /// </summary>
         private void ExecuteBackpropagation()
         {
             //Delta hidden layer
@@ -267,6 +275,10 @@ namespace MachineLearning
             }
         }
 
+        /// <summary>
+        /// Weigth updating
+        /// </summary>
+        /// <param name="q"></param>
         private void UpdateWeigth(double q)
         {
             for (int z = 0; z < Layer - 1; z++)
@@ -284,11 +296,7 @@ namespace MachineLearning
                     });
             }
 
-            //Azzero i delta
-            for (int z = 0; z < Layer - 1; z++)
-                Array.Clear(DeltaWeigth[z], 0, DeltaWeigth[z].Length);
-
-            //bias update
+            //Bias update
             for (int z = 1; z < Layer; z++)
             {
                 double etaQ = EtaQ[z];
@@ -296,7 +304,11 @@ namespace MachineLearning
                     Bias[z][j] -= etaQ * DeltaBias[z][j];
             }
 
-            //azzero i bias
+            //Turn delta to zero
+            for (int z = 0; z < Layer - 1; z++)
+                Array.Clear(DeltaWeigth[z], 0, DeltaWeigth[z].Length);
+            
+            //Turn bias to zero
             for (int z = 0; z < Layer; z++)
                 Array.Clear(DeltaBias[z], 0, DeltaBias[z].Length);
         }
@@ -421,59 +433,7 @@ namespace MachineLearning
                 EtaQ[i] = LearningRate[i] * q;
         }
 
-        private double GetMSE(
-            double[][] input, 
-            double[][] output)
-        {
-            double total = 0.0;
-            for (int i = 0; i < input.Length; i++)
-            {
-                GetNetworkOutput(input[i]);
-                double buf = 0.0;
-                for (int z = 0; z < NodeLayer[Layer - 1]; z++)
-                {
-                    double err = NodeStatus[Layer - 1][z] - output[i][z];
-                    buf += err * err;
-                }
-                total += buf / NodeLayer[Layer - 1];
-            }
-
-            return total / input.Length;
-        }
-
-        //private double ActivationFunction(double x)
-        //{
-        //    switch(FType)
-        //    {
-        //        case FunctionType.Sigmoid:
-        //            return Helper.Sigmoid(0.666666, 0.0, x);
-        //        case FunctionType.Tanh:
-        //            return Helper.Tanh(1.7159, 0.66666, 0.0, x);
-        //        case FunctionType.SoftPlus:
-        //            return Helper.SoftPlus(x);
-        //        case FunctionType.ReLU:
-        //            return Helper.ReLU(x);
-        //        default:
-        //            return x;
-        //    }
-        //}
-
-        //private double DerivativeActivationFunction(double x)
-        //{
-        //    switch (FType)
-        //    {
-        //        case FunctionType.Sigmoid:
-        //            return Helper.DerivativeSigmoid(0.666666, 0.0, x);
-        //        case FunctionType.Tanh:
-        //            return Helper.DerivativeTanh(1.7159, 0.66666, 0.0, x);
-        //        case FunctionType.SoftPlus:
-        //            return Helper.DerivativeSoftPlus(x);
-        //        case FunctionType.ReLU:
-        //            return Helper.ReLU(x);
-        //        default:
-        //            return x;
-        //    }
-        //}
+        
 
         #endregion
     }

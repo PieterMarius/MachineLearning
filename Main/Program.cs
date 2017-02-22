@@ -12,7 +12,6 @@ namespace MachineLearning
         {
 
             //TestExp();
-
             int T =40000;
             int nFeature = 784;
             int nLabel = 10;
@@ -20,9 +19,9 @@ namespace MachineLearning
             IFunction type = new Sigmoid(1.0, 0.0);
             //IFunction type = new Tanh(0.666666, 1.7159, 0.0);
 
-            double[] eta = new double[] { 3.0, 3.0, 3.0, 3.0 };
-            double[] dropoutValue = new double[] { 0.8, 0.5, 0.5 };
-            int[] nodeLayer = new int[] { nFeature, 1024, 500, nLabel };
+            double[] eta = new double[] { 1.0, 1.0, 1.0, 1.0 };
+            double[] dropoutValue = new double[] { 0.9, 0.5, 0.5 };
+            int[] nodeLayer = new int[] { nFeature, 400, 20, nLabel };
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
 
@@ -41,12 +40,38 @@ namespace MachineLearning
                 eta, 
                 momentum, 
                 dropoutValue, 
-                type);
+                type,
+                10);
 
-            network.DimBatch = 10;
-            network.DimBatchMax = 20;
-            network.DimBatchMin = 10;
-            network.Thread = 6;
+            network.SetThread(6);
+
+            #region Start test error
+
+            double[][] result = new double[testDataMatrix.Length][];
+            for (int i = 0; i < testDataMatrix.Length; i++)
+            {
+                result[i] = network.GetNetworkOutput(testDataMatrix[i]);
+            }
+
+            //Finalizzo il risultato
+            for (int i = 0; i < testDataMatrix.Length; i++)
+            {
+                double max = double.MinValue;
+                int index = 0;
+                for (int j = 0; j < result[i].Length; j++)
+                {
+                    if (result[i][j] > max)
+                    {
+                        max = result[i][j];
+                        index = j;
+                    }
+                    result[i][j] = 0.0;
+                }
+                result[i][index] = 1.0;
+            }
+            Console.WriteLine("Network error " + GetError(result, testLabelMatrix));
+
+            #endregion
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Reset();
@@ -57,7 +82,9 @@ namespace MachineLearning
             stopwatch.Stop();
             Console.WriteLine("Train Elapsed={0}", stopwatch.ElapsedMilliseconds * 0.001);
 
-            double[][] result = new double[testDataMatrix.Length][];
+            
+
+            result = new double[testDataMatrix.Length][];
             for (int i = 0; i < testDataMatrix.Length; i++)
             {
                 result[i] = network.GetNetworkOutput(testDataMatrix[i]);
@@ -89,12 +116,14 @@ namespace MachineLearning
         {
             double error = 0.0;
             for (int i = 0; i < output.Length; i++)
-            {
+            { 
+                double b = 0.0;
                 for (int j = 0; j < output[i].Length; j++)
                 {
-                    double b = output[i][j] - expectedOutput[i][j];
-                    error += b * b;
+                    b += Math.Abs(output[i][j] - expectedOutput[i][j]);
                 }
+                if (Math.Abs(b) > 0.00001)
+                    error += 1;
             }
             return error;
         }
