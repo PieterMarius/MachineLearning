@@ -14,7 +14,7 @@ namespace MachineLearning
         public double[] LearningRate { get; private set; }
         public double Momentum { get; private set; }
         public int DimBatch { get; private set; }
-        public IFunction ActivationFunc { get; private set; }
+        public IFunction[] ActivationFunc { get; private set; }
         public double[] DropoutValue { get; private set; }
         public int Thread { get; private set; }
 
@@ -32,7 +32,6 @@ namespace MachineLearning
         private double[][] DeltaWeigth;
         private double[][] OldDeltaWeigth;
         private bool[][] Dropout;
-        private double[] Error;
         private double[] EtaQ;
         private int[][] IndexBuffer;
 
@@ -46,7 +45,7 @@ namespace MachineLearning
             double[] learningRate,
             double momentum,
             double[] dropoutValue,
-            IFunction activationFunc,
+            IFunction[] activationFunc,
             int batch)
         {
             Ephocs = ephocs;
@@ -66,13 +65,15 @@ namespace MachineLearning
             int[] nodeLayer,
             double learningRate,
             double momentum,
-            IFunction activationFunc)
+            IFunction[] activationFunc,
+            int batch)
         {
             Ephocs = ephocs;
             Layer = nodeLayer.Length;
             NodeLayer = nodeLayer;
             Momentum = momentum;
             ActivationFunc = activationFunc;
+            DimBatch = batch;
             DropoutValue = new double[Layer];
 
             LearningRate = new double[Layer];
@@ -90,7 +91,8 @@ namespace MachineLearning
             int[] nodeLayer,
             double[] learningRate,
             double momentum,
-            IFunction activationFunc)
+            IFunction[] activationFunc,
+            int batch)
         {
             Ephocs = ephocs;
             Layer = nodeLayer.Length;
@@ -98,6 +100,7 @@ namespace MachineLearning
             LearningRate = learningRate;
             Momentum = momentum;
             ActivationFunc = activationFunc;
+            DimBatch = batch;
             DropoutValue = new double[Layer];
 
             for (int i = 0; i < Layer; i++)
@@ -114,8 +117,7 @@ namespace MachineLearning
 
         public void Train(
             double[][] input,
-            double[][] output,
-            double exitValue)
+            double[][] target)
         {
             int index;
             double q = 1.0 / DimBatch;
@@ -128,7 +130,7 @@ namespace MachineLearning
                     //Randomize input
                     index = Helper.GetRandom(0, input.Length);
 
-                    TrainExec(input[index], output[index]);
+                    TrainExec(input[index], target[index]);
                 }
 
                 UpdateWeigth(q);
@@ -203,17 +205,22 @@ namespace MachineLearning
             return total / input.Length;
         }
 
+        public void SetDropoutValue(double[] dropout)
+        {
+            DropoutValue = dropout;
+        }
+
         #endregion
 
         #region Private Methods
 
         private void TrainExec(
             double[] input,
-            double[] output)
+            double[] target)
         {
             ExecuteInternalNetworkOutput(Layer, input);
 
-            ForwardError(output);
+            ForwardError(target);
 
             ExecuteBackpropagation();
         }
@@ -221,14 +228,13 @@ namespace MachineLearning
         /// <summary>
         /// Forward error calculation
         /// </summary>
-        private void ForwardError(double[] output)
+        private void ForwardError(double[] target)
         {
             Parallel.For(0, NodeLayer[Layer - 1], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                 z =>
                 {
-                    double err = NodeStatus[Layer - 1][z] - output[z];
-                    Error[z] = err;
-                    Delta[Layer - 1][z] = err * ActivationFunc.GetDerivative(Net[Layer - 1][z]);
+                    double err = NodeStatus[Layer - 1][z] - target[z];
+                    Delta[Layer - 1][z] = err * ActivationFunc[Layer - 2].GetDerivative(Net[Layer - 1][z]);
                 });
         }
 
@@ -253,7 +259,7 @@ namespace MachineLearning
                                 s += Delta[nLayer][h] * Weigth[z][index];
                             }  
                         }
-                        Delta[z][j] = s * ActivationFunc.GetDerivative(Net[z][j]);
+                        Delta[z][j] = s * ActivationFunc[z].GetDerivative(Net[z][j]);
                     });
             }
 
@@ -348,7 +354,7 @@ namespace MachineLearning
                     }
 
                     Net[z][j] = s + Bias[z][j];
-                    NodeStatus[z][j] = ActivationFunc.GetResult(Net[z][j]);
+                    NodeStatus[z][j] = ActivationFunc[nLayer].GetResult(Net[z][j]);
                 });
             }
         }
@@ -374,7 +380,7 @@ namespace MachineLearning
                         s += NodeStatus[nLayer][h] * Weigth[nLayer][nodeLayer + h] * DropoutValue[nLayer];
                    
                     Net[z][j] = s + Bias[z][j];
-                    NodeStatus[z][j] = ActivationFunc.GetResult(Net[z][j]);
+                    NodeStatus[z][j] = ActivationFunc[nLayer].GetResult(Net[z][j]);
                 });
             }
         }
@@ -423,8 +429,6 @@ namespace MachineLearning
                 for (int j = 0; j < NodeLayer[i]; j++)
                     Bias[i][j] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
             }
-
-            Error = new double[NodeLayer[Layer - 1]];
         }
 
         private void SetEtaQ(double q)
@@ -432,9 +436,7 @@ namespace MachineLearning
             for (int i = 0; i < Layer; i++)
                 EtaQ[i] = LearningRate[i] * q;
         }
-
         
-
         #endregion
     }
 }

@@ -68,7 +68,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ANN\ANN.cs" />
-    <Compile Include="ANN\ANNLM.cs" />
+    <Compile Include="Helpers\Function\SoftMax.cs" />
     <Compile Include="Helpers\Function\ReLU.cs" />
     <Compile Include="Helpers\Helper.cs" />
     <Compile Include="Helpers\Function\IFunction.cs" />
