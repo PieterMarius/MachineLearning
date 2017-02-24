@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{FABCC2A0-AA9C-46D5-85EA-4EEA9CAD1CB0}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>MachineLearning</RootNamespace>
     <AssemblyName>MachineLearning</AssemblyName>
@@ -68,12 +68,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ANN\ANN.cs" />
+    <Compile Include="Helpers\Function\IErrorFunction.cs" />
+    <Compile Include="Helpers\Function\IExponentialFunction.cs" />
+    <Compile Include="Helpers\Function\MediumSquareErrorFunction.cs" />
     <Compile Include="Helpers\Function\SoftMax.cs" />
     <Compile Include="Helpers\Function\ReLU.cs" />
     <Compile Include="Helpers\Helper.cs" />
     <Compile Include="Helpers\Function\IFunction.cs" />
     <Compile Include="Helpers\Function\Sigmoid.cs" />
     <Compile Include="Helpers\Function\Tanh.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

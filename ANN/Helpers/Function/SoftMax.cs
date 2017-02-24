@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MachineLearning.Helpers.Function
+﻿namespace MachineLearning.Helpers.Function
 {
-    public sealed class SoftMax : IFunction
+    public sealed class SoftMax : IFunction, IExponentialFunction
     {
+        private double ExpSum;
+
         #region Constructor
 
         public SoftMax()
@@ -19,12 +15,28 @@ namespace MachineLearning.Helpers.Function
 
         public double GetDerivative(double x)
         {
-            throw new NotImplementedException();
+            return x;
         }
 
         public double GetResult(double x)
         {
-            throw new NotImplementedException();
+            return x;
+        }
+
+        #endregion
+
+        #region IExponentialFunction
+
+        public void SetExponentialSum(double[] x)
+        {
+            ExpSum = 0.0;
+            for (int i = 0; i < x.Length; i++)
+                ExpSum += Helper.Exp16(x[i]);
+        }
+
+        public double GetExponential(double x)
+        {
+            return Helper.Exp16(x) / ExpSum;
         }
 
         #endregion

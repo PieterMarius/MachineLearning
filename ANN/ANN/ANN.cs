@@ -13,8 +13,8 @@ namespace MachineLearning
         public int[] NodeLayer { get; private set; }
         public double[] LearningRate { get; private set; }
         public double Momentum { get; private set; }
-        public int DimBatch { get; private set; }
         public IFunction[] ActivationFunc { get; private set; }
+        public IErrorFunction ErrorFunc { get; private set; }
         public double[] DropoutValue { get; private set; }
         public int Thread { get; private set; }
 
@@ -46,7 +46,7 @@ namespace MachineLearning
             double momentum,
             double[] dropoutValue,
             IFunction[] activationFunc,
-            int batch)
+            IErrorFunction errorFunc)
         {
             Ephocs = ephocs;
             Layer = nodeLayer.Length;
@@ -55,8 +55,8 @@ namespace MachineLearning
             Momentum = momentum;
             ActivationFunc = activationFunc;
             DropoutValue = dropoutValue;
-            DimBatch = batch;
-
+            ErrorFunc = errorFunc;
+            
             InitVariables();
         }
         
@@ -66,14 +66,14 @@ namespace MachineLearning
             double learningRate,
             double momentum,
             IFunction[] activationFunc,
-            int batch)
+            IErrorFunction errorFunc)
         {
             Ephocs = ephocs;
             Layer = nodeLayer.Length;
             NodeLayer = nodeLayer;
             Momentum = momentum;
             ActivationFunc = activationFunc;
-            DimBatch = batch;
+            ErrorFunc = errorFunc;
             DropoutValue = new double[Layer];
 
             LearningRate = new double[Layer];
@@ -92,7 +92,7 @@ namespace MachineLearning
             double[] learningRate,
             double momentum,
             IFunction[] activationFunc,
-            int batch)
+            IErrorFunction errorFunc)
         {
             Ephocs = ephocs;
             Layer = nodeLayer.Length;
@@ -100,7 +100,7 @@ namespace MachineLearning
             LearningRate = learningRate;
             Momentum = momentum;
             ActivationFunc = activationFunc;
-            DimBatch = batch;
+            ErrorFunc = errorFunc;
             DropoutValue = new double[Layer];
 
             for (int i = 0; i < Layer; i++)
@@ -117,15 +117,16 @@ namespace MachineLearning
 
         public void Train(
             double[][] input,
-            double[][] target)
+            double[][] target,
+            int batchSize)
         {
             int index;
-            double q = 1.0 / DimBatch;
+            double q = 1.0 / batchSize;
             SetEtaQ(q);
 
             for (int i = 0; i < Ephocs; i++)
             {
-                for (int k = 0; k < DimBatch; k++)
+                for (int k = 0; k < batchSize; k++)
                 {
                     //Randomize input
                     index = Helper.GetRandom(0, input.Length);
@@ -187,7 +188,7 @@ namespace MachineLearning
 
         public double GetNetworkMSE(
             double[][] input,
-            double[][] output)
+            double[][] target)
         {
             double total = 0.0;
             for (int i = 0; i < input.Length; i++)
@@ -196,7 +197,7 @@ namespace MachineLearning
                 double buf = 0.0;
                 for (int z = 0; z < NodeLayer[Layer - 1]; z++)
                 {
-                    double err = NodeStatus[Layer - 1][z] - output[i][z];
+                    double err = NodeStatus[Layer - 1][z] - target[i][z];
                     buf += err * err;
                 }
                 total += buf / NodeLayer[Layer - 1];
@@ -233,8 +234,11 @@ namespace MachineLearning
             Parallel.For(0, NodeLayer[Layer - 1], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                 z =>
                 {
-                    double err = NodeStatus[Layer - 1][z] - target[z];
-                    Delta[Layer - 1][z] = err * ActivationFunc[Layer - 2].GetDerivative(Net[Layer - 1][z]);
+                    Delta[Layer - 1][z] = ErrorFunc.GetDeltaForwardError(
+                                                    NodeStatus[Layer - 1][z],
+                                                    Net[Layer - 1][z],
+                                                    target[z],
+                                                    ActivationFunc[Layer - 2]);
                 });
         }
 
@@ -259,7 +263,7 @@ namespace MachineLearning
                                 s += Delta[nLayer][h] * Weigth[z][index];
                             }  
                         }
-                        Delta[z][j] = s * ActivationFunc[z].GetDerivative(Net[z][j]);
+                        Delta[z][j] = s * ActivationFunc[z - 1].GetDerivative(Net[z][j]);
                     });
             }
 
@@ -356,6 +360,25 @@ namespace MachineLearning
                     Net[z][j] = s + Bias[z][j];
                     NodeStatus[z][j] = ActivationFunc[nLayer].GetResult(Net[z][j]);
                 });
+
+                ExecExpFunc(z, nLayer);
+            }
+        }
+
+        private void ExecExpFunc(
+            int z,
+            int nLayer)
+        {
+            if (ActivationFunc[nLayer] is IExponentialFunction)
+            {
+                IExponentialFunction expFunc = (IExponentialFunction)ActivationFunc[nLayer];
+                expFunc.SetExponentialSum(Net[z]);
+
+                Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                j =>
+                {
+                    NodeStatus[z][j] = expFunc.GetExponential(Net[z][j]);
+                });
             }
         }
 
@@ -382,6 +405,8 @@ namespace MachineLearning
                     Net[z][j] = s + Bias[z][j];
                     NodeStatus[z][j] = ActivationFunc[nLayer].GetResult(Net[z][j]);
                 });
+
+                ExecExpFunc(z, nLayer);
             }
         }
 
@@ -435,6 +460,11 @@ namespace MachineLearning
         {
             for (int i = 0; i < Layer; i++)
                 EtaQ[i] = LearningRate[i] * q;
+        }
+
+        private void CheckNetworkInputCoherence()
+        {
+
         }
         
         #endregion
