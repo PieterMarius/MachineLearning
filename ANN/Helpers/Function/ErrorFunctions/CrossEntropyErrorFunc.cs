@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace MachineLearning.Helpers
 {
     public sealed class CrossEntropyErrorFunc : IErrorFunction

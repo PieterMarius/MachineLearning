@@ -1,27 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MachineLearning.Helpers
 {
-    public sealed class Sigmoid : IFunction
+    public class Tanh: IFunction
     {
         #region Fields
 
         public readonly double P;
+        public readonly double K;
         public readonly double Lin;
 
         #endregion
 
         #region Constructor
 
-        public Sigmoid(
+        public Tanh(
             double p,
+            double k,
             double lin)
         {
             P = p;
+            K = k;
             Lin = lin;
         }
 
@@ -31,13 +30,13 @@ namespace MachineLearning.Helpers
 
         public double GetDerivative(double x)
         {
-            double b = GetResult(x);
-            return P * b * (1.0 - b) + Lin;
+            double b = 1.0 / Math.Cosh(P * x);
+            return P * K * b * b + Lin;
         }
 
         public double GetResult(double x)
         {
-            return 1.0 / (1.0 + Helper.Exp16(-P * x)) + Lin;
+            return K * Math.Tanh(P * x) + Lin;
         }
 
         #endregion
