@@ -1,4 +1,4 @@
-﻿namespace MachineLearning.Helpers.Function
+﻿namespace MachineLearning.Helpers
 {
     public sealed class SoftMax : IFunction, IExponentialFunction
     {

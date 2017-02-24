@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MachineLearning.Helpers.Function
+namespace MachineLearning.Helpers
 {
     public sealed class CrossEntropyErrorFunc : IErrorFunction
     {
@@ -12,9 +12,13 @@ namespace MachineLearning.Helpers.Function
 
         #region Public Methods
 
-        public double GetDeltaForwardError(double outpuLayer, double outputNet, double target, IFunction function)
+        public double GetDeltaForwardError(
+            double outpuLayer, 
+            double outputNet, 
+            double target, 
+            IFunction function)
         {
-            throw new NotImplementedException();
+            return outpuLayer - target;
         }
 
         #endregion

@@ -16,11 +16,11 @@ namespace MachineLearning
             int nFeature = 784;
             int nLabel = 10;
             double momentum = 0.0;
-            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0) };
-            IErrorFunction errorFunction = new MediumSquareErrorFunction();
+            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new SoftMax() };
+            IErrorFunction errorFunction = new CrossEntropyErrorFunc();
             //IFunction type = new Tanh(0.666666, 1.7159, 0.0);
 
-            double[] eta = new double[] { 1.0, 1.0, 1.0, 1.0 };
+            double[] eta = new double[] { 0.5, 0.5, 0.5, 0.5 };
             double[] dropoutValue = new double[] { 1.0, 1.0, 1.0 };
             int[] nodeLayer = new int[] { nFeature, 400, 20, nLabel };
             double[][] dataMatrix = null;

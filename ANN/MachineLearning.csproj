@@ -68,6 +68,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ANN\ANN.cs" />
+    <Compile Include="Helpers\Function\CrossEntropyErrorFunc.cs" />
     <Compile Include="Helpers\Function\IErrorFunction.cs" />
     <Compile Include="Helpers\Function\IExponentialFunction.cs" />
     <Compile Include="Helpers\Function\MediumSquareErrorFunction.cs" />
