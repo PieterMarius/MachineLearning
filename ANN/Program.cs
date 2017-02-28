@@ -12,7 +12,40 @@ namespace MachineLearning
         {
 
             //TestExp();
-            int T =1000;
+            //ANNExample();
+
+            int T = 1000;
+            int nFeature = 784;
+            int nLabel = 10;
+            double momentum = 0.0;
+            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new SoftMax() };
+            IErrorFunction errorFunction = new CrossEntropyErrorFunc();
+
+            double[] eta = new double[] { 0.5, 0.5, 0.5, 0.5 };
+            double[] dropoutValue = new double[] { 1.0, 1.0, 1.0 };
+            int[] nodeLayer = new int[] { nFeature, 400, 20, nLabel };
+            double[][] dataMatrix = null;
+            double[][] labelMatrix = null;
+
+            readDataset("data.dat", new[] { "  " }, ref dataMatrix);
+            readDataset("tlabel.dat", new[] { " " }, ref labelMatrix);
+
+            RNN network = new RNN(
+                T,
+                8,
+                nodeLayer,
+                eta,
+                momentum,
+                dropoutValue,
+                type,
+                errorFunction);
+
+            network.Train(dataMatrix, labelMatrix, 1);
+        }
+
+        static void ANNExample()
+        {
+            int T = 1000;
             int nFeature = 784;
             int nLabel = 10;
             double momentum = 0.0;
@@ -27,7 +60,7 @@ namespace MachineLearning
             double[][] labelMatrix = null;
 
             readDataset("data.dat", new[] { "  " }, ref dataMatrix);
-            readDataset("tlabel.dat", new[] { " " },ref labelMatrix);
+            readDataset("tlabel.dat", new[] { " " }, ref labelMatrix);
 
             double[][] testDataMatrix = null;
             double[][] testLabelMatrix = null;
@@ -36,11 +69,11 @@ namespace MachineLearning
             readDataset("tlabeltest.dat", new[] { " " }, ref testLabelMatrix);
 
             ANN network = new ANN(
-                T, 
-                nodeLayer, 
-                eta, 
-                momentum, 
-                dropoutValue, 
+                T,
+                nodeLayer,
+                eta,
+                momentum,
+                dropoutValue,
                 type,
                 errorFunction);
 
@@ -83,11 +116,11 @@ namespace MachineLearning
                 resultTrain = ResultFinalize(resultTrain);
                 Console.WriteLine("Network train error " + GetError(resultTrain, labelMatrix));
             }
-            
+
             stopwatch.Stop();
             Console.WriteLine("Train Elapsed={0}", stopwatch.ElapsedMilliseconds * 0.001);
 
-            
+
 
             result = new double[testDataMatrix.Length][];
             for (int i = 0; i < testDataMatrix.Length; i++)

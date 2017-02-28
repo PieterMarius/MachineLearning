@@ -67,17 +67,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ANN\ANN.cs" />
-    <Compile Include="Helpers\Function\CrossEntropyErrorFunc.cs" />
-    <Compile Include="Helpers\Function\IErrorFunction.cs" />
-    <Compile Include="Helpers\Function\IExponentialFunction.cs" />
-    <Compile Include="Helpers\Function\MediumSquareErrorFunction.cs" />
-    <Compile Include="Helpers\Function\SoftMax.cs" />
-    <Compile Include="Helpers\Function\ReLU.cs" />
+    <Compile Include="Algorithm\ANN.cs" />
+    <Compile Include="Algorithm\RNN.cs" />
+    <Compile Include="Helpers\Function\ErrorFunctions\CrossEntropyErrorFunc.cs" />
+    <Compile Include="Helpers\Function\Interfaces\IErrorFunction.cs" />
+    <Compile Include="Helpers\Function\Interfaces\IExponentialFunction.cs" />
+    <Compile Include="Helpers\Function\ErrorFunctions\MediumSquareErrorFunction.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\SoftMax.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\ReLU.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\SoftPlus.cs" />
     <Compile Include="Helpers\Helper.cs" />
-    <Compile Include="Helpers\Function\IFunction.cs" />
-    <Compile Include="Helpers\Function\Sigmoid.cs" />
-    <Compile Include="Helpers\Function\Tanh.cs" />
+    <Compile Include="Helpers\Function\Interfaces\IFunction.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\Sigmoid.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\Tanh.cs" />
+    <Compile Include="Helpers\Function\ActivationFunctions\SoftSign.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
