@@ -426,31 +426,31 @@ namespace MachineLearning
             Delta = new double[Layer][];
             EtaQ = new double[Layer];
             
-            for (int i = 0; i < Layer - 1; i++)
-            { 
-                WeigthLayer[i] = NodeLayer[i] * NodeLayer[i + 1];
-                Weigth[i] = new double[WeigthLayer[i]];
-                DeltaWeigth[i] = new double[WeigthLayer[i]];
-                OldDeltaWeigth[i] = new double[WeigthLayer[i]];
-                IndexBuffer[i] = new int[WeigthLayer[i]];
-                Dropout[i] = new bool[WeigthLayer[i]];
-
-                for (int j = 0; j < WeigthLayer[i]; j++)
-                { 
-                    Weigth[i][j] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
-                    IndexBuffer[i][j] = (int)Math.Floor((double)(j / NodeLayer[i]));
-                    Dropout[i][j] = false;
-                }
-            }
-
             for (int i = 0; i < Layer; i++)
             {
+                if (i < Layer - 1)
+                {
+                    WeigthLayer[i] = NodeLayer[i] * NodeLayer[i + 1];
+                    Weigth[i] = new double[WeigthLayer[i]];
+                    DeltaWeigth[i] = new double[WeigthLayer[i]];
+                    OldDeltaWeigth[i] = new double[WeigthLayer[i]];
+                    IndexBuffer[i] = new int[WeigthLayer[i]];
+                    Dropout[i] = new bool[WeigthLayer[i]];
+
+                    for (int j = 0; j < WeigthLayer[i]; j++)
+                    {
+                        Weigth[i][j] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
+                        IndexBuffer[i][j] = (int)Math.Floor((double)(j / NodeLayer[i]));
+                        Dropout[i][j] = false;
+                    }
+                }
+
                 Bias[i] = new double[NodeLayer[i]];
                 DeltaBias[i] = new double[NodeLayer[i]];
                 NodeStatus[i] = new double[NodeLayer[i]];
                 Net[i] = new double[NodeLayer[i]];
                 Delta[i] = new double[NodeLayer[i]];
-                
+
                 for (int j = 0; j < NodeLayer[i]; j++)
                     Bias[i][j] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
             }

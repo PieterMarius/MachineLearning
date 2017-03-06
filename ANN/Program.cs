@@ -40,7 +40,7 @@ namespace MachineLearning
                 type,
                 errorFunction);
 
-            network.Train(dataMatrix, labelMatrix, 1);
+            network.Train(dataMatrix, labelMatrix, 1, true);
         }
 
         static void ANNExample()
