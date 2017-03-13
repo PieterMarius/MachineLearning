@@ -135,13 +135,16 @@ namespace MachineLearning
             double q = 1.0 / batchSize;
             SetEtaQ(q);
 
+            //TEST
+            tot = 0.0;
+
             for (int i = 0; i < Ephocs; i++)
             {
                 for (int k = 0; k < batchSize; k++)
                 {
-                    NodeStatus[0] = NodeStatus[TimeStepSize - 1];
+                    //NodeStatus[0] = NodeStatus[TimeStepSize - 1];
 
-                    for (int w = 1; w < TimeStepSize; w++)
+                    for (int w = 0; w < TimeStepSize; w++)
                     {
                         index = index % input.Length;
 
@@ -152,16 +155,29 @@ namespace MachineLearning
 
                         index++;
                     }
+                    if (index < input.Length)
+                    {
+                        if (checkErrorFromLastStep)
+                            ForwardError(target[index % input.Length], TimeStepSize - 1);
 
-                    if (checkErrorFromLastStep)
-                        ForwardError(target[index], TimeStepSize - 1);
+                        if (i > Ephocs - 200)
+                        {
+                            Console.WriteLine("index " + index);
+                            Console.WriteLine("status " + NodeStatus[TimeStepSize - 1][Layer - 1][0] * 622);
+                            Console.WriteLine("exp " + target[index % input.Length][0] * 622);
+                        }
 
-                    //TODO verificare come gestire input
-                    ExecuteBackpropagation(checkErrorFromLastStep);
+                        //TODO verificare come gestire input
+
+                        ExecuteBackpropagation(checkErrorFromLastStep);
+                    }
                 }
 
                 UpdateWeigth(q);
             }
+            Console.WriteLine("Total err: " + tot / Ephocs);
+           
+            
         }
 
         //public double[] GetNetworkOutput(
@@ -213,18 +229,16 @@ namespace MachineLearning
             Thread = thread;
         }
 
-        //public double GetNetworkMSE(
-        //    double[][] input,
+        //private double GetInnerNetworkMSE(
         //    double[][] target)
         //{
         //    double total = 0.0;
         //    for (int i = 0; i < input.Length; i++)
         //    {
-        //        GetNetworkOutput(input[i]);
         //        double buf = 0.0;
         //        for (int z = 0; z < NodeLayer[Layer - 1]; z++)
         //        {
-        //            double err = NodeStatus[Layer - 1][z] - target[i][z];
+        //            double err = NodeStatus[TimeStepSize-1][Layer - 1][z] - target[i][z];
         //            buf += err * err;
         //        }
         //        total += buf / NodeLayer[Layer - 1];
@@ -241,7 +255,10 @@ namespace MachineLearning
         #endregion
 
         #region Private Methods
-        
+
+        //TEST
+        double tot = 0.0;
+
         /// <summary>
         /// Forward error calculation
         /// </summary>
@@ -258,6 +275,17 @@ namespace MachineLearning
                                                     target[z],
                                                     ActivationFunc[Layer - 2]);
                 });
+
+            //DEBUG
+            double errSum = 0.0;
+            for (int i = 0; i < NodeLayer[Layer - 1]; i++)
+            {
+                double err = NodeStatus[step][Layer - 1][i] - target[i];
+                errSum += err * err;
+            }
+            tot += errSum / NodeLayer[Layer - 1];
+           
+
         }
 
         /// <summary>
@@ -269,62 +297,71 @@ namespace MachineLearning
             for (int t = TimeStepSize - 1; t >= 0; t--)
             {
                 //Delta hidden layer
-                int startLayer = Layer;
-                if (checkErrorFromLastStep && 
+                int startLayer = Layer - 2;
+                if (checkErrorFromLastStep &&
                     t != TimeStepSize - 1)
-                    startLayer = Layer - 3;
+                {
+                    Array.Copy(Delta[t + 1][startLayer + 1], Delta[t][startLayer + 1], Delta[t][startLayer + 1].Length);
+                }
 
-                for (int z = Layer - 2; z > 0; z--)
+                for (int z = startLayer; z > 0; z--)
                 {
                     int nLayer = z + 1;
 
-                    //Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
-                    //    j =>
-                    //layer node
-                    for (int j = 0; j < NodeLayer[z]; j++)
-                    {
-                        double s = 0.0;
-                        for (int h = 0; h < NodeLayer[nLayer]; h++)
+                    Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                        j =>
                         {
-                            int index = (h * NodeLayer[z]) + j;
-                            if (!Dropout[z][index])
-                            {
-                                s += Delta[t][nLayer][h] * Weigth[z][index];
-                            }
-                        }
-
-                        //All'ultimo timestep non aggiorno i pesi memoria
-                        if (t + 2 <= TimeStepSize)
-                        {
-                            for (int h = 0; h < NodeLayer[z]; h++)
+                            //layer node
+                            //for (int j = 0; j < NodeLayer[z]; j++)
+                            //{
+                            double s = 0.0;
+                            for (int h = 0; h < NodeLayer[nLayer]; h++)
                             {
                                 int index = (h * NodeLayer[z]) + j;
-                                s += Delta[t + 1][z][h] * TimeWeigth[z - 1][index];
+                                if (!Dropout[z][index])
+                                {
+                                    s += Delta[t][nLayer][h] * Weigth[z][index];
+                                }
                             }
-                        }
 
-                        Delta[t][z][j] = s * ActivationFunc[z - 1].GetDerivative(Net[t][z][j]);
-                    }
+                            //All'ultimo timestep non aggiorno i pesi memoria
+                            if (t + 2 <= TimeStepSize)
+                            {
+                                for (int h = 0; h < NodeLayer[z]; h++)
+                                {
+                                    int index = (h * NodeLayer[z]) + j;
+                                    s += Delta[t + 1][z][h] * TimeWeigth[z - 1][index];
+                                }
+                            }
+
+                            Delta[t][z][j] = s * ActivationFunc[z - 1].GetDerivative(Net[t][z][j]);
+                        });
                 }
 
-                for (int z = 0; z < Layer - 1; z++)
+                for (int z = 0; z < Layer-1; z++)
                 {
-                    Parallel.For(0, WeigthLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                    if (!(checkErrorFromLastStep &&
+                        t != TimeStepSize - 1 &&
+                        z >= Layer - 2))
+                    {
+                        Parallel.For(0, WeigthLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
                         h =>
                         {
                             //int IndexBuffer[][] = (int)Math.Floor((double)(h / NodeLayer[z]));
                             DeltaWeigth[z][h] += Delta[t][z + 1][IndexBuffer[z][h]] * NodeStatus[t][z][h % NodeLayer[z]];
                         });
+                    }
 
-                    if (z > 0)
+                    if (z > 0 &&
+                        t > 0)
                     {
-                        //Parallel.For(0, WeigthLayer[z] - 1, new ParallelOptions { MaxDegreeOfParallelism = Thread },
-                        //    h =>
-                        for (int h = 0; h < NodeLayer[z] * NodeLayer[z]; h++)
-                        {
+                        Parallel.For(0, NodeLayer[z] * NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                            h =>
+                            //for (int h = 0; h < NodeLayer[z] * NodeLayer[z]; h++)
+                            {
                             //int bufIndex = (int)Math.Floor((double)(h / NodeLayer[z]));
                             DeltaTime[z - 1][h] += Delta[t][z][TimeIndexBuffer[z - 1][h]] * NodeStatus[t - 1][z][h % NodeLayer[z]];
-                        }
+                        });
                     }
                 }
                 
@@ -359,11 +396,14 @@ namespace MachineLearning
                         }
                     });
 
-                for (int h = 0; h < NodeLayer[z] * NodeLayer[z]; h++)
+                if (z < DeltaTime.Length)
                 {
-                    double buf = etaQ * DeltaTime[z][h]; //+ (Momentum * OldDeltaWeigth[z][h]);
-                    TimeWeigth[z][h] -= buf;
-                    //OldDeltaWeigth[z][h] = buf;
+                    for (int h = 0; h < NodeLayer[z + 1] * NodeLayer[z + 1]; h++)
+                    {
+                        double buf = etaQ * DeltaTime[z][h]; //+ (Momentum * OldDeltaWeigth[z][h]);
+                        TimeWeigth[z][h] -= buf;
+                        //OldDeltaWeigth[z][h] = buf;
+                    }
                 }
             }
 
@@ -378,6 +418,10 @@ namespace MachineLearning
             //Turn delta to zero
             for (int z = 0; z < Layer - 1; z++)
                 Array.Clear(DeltaWeigth[z], 0, DeltaWeigth[z].Length);
+
+            //Turn Delta time to zero
+            for (int z = 0; z < Layer - 2; z++)
+                Array.Clear(DeltaTime[z], 0, DeltaTime[z].Length);
 
             //Turn bias to zero
             for (int z = 0; z < Layer; z++)
@@ -396,10 +440,10 @@ namespace MachineLearning
             for (int z = 1; z < layerNumber; z++)
             {
                 int nLayer = z - 1;
-                
-                //Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
-                //j =>
-                for(int j=0;j<NodeLayer[z];j++)
+
+                Parallel.For(0, NodeLayer[z], new ParallelOptions { MaxDegreeOfParallelism = Thread },
+                j =>
+                //for(int j=0;j<NodeLayer[z];j++)
                 {
                     double s = 0.0;
                     int nodeLayer = NodeLayer[nLayer] * j;
@@ -422,9 +466,10 @@ namespace MachineLearning
                     }
 
                     double st = 0.0;
-                    
+
                     //Check for output layer
-                    if (z + 1 < layerNumber)
+                    if (z + 1 < layerNumber &&
+                        step > 0)
                     {
                         int nodeTimeLayer = NodeLayer[z] * j;
 
@@ -436,7 +481,7 @@ namespace MachineLearning
                     }
                     Net[step][z][j] = s + st + Bias[z][j];
                     NodeStatus[step][z][j] = ActivationFunc[nLayer].GetResult(Net[step][z][j]);
-                }
+                });
 
                 ExecExponentialFunc(z, nLayer, step);
             }
@@ -564,7 +609,7 @@ namespace MachineLearning
                         TimeIndexBuffer[i][h] = (int)Math.Floor((double)(h / NodeLayer[i + 1]));
 
                     for (int k = 0; k < dimTimeWeigth; k++)
-                        TimeWeigth[i][k] = 0.0;
+                        TimeWeigth[i][k] = 0.1 * Helper.GetRandomGaussian(0.0, 1.0);
                 }
 
                 Bias[i] = new double[NodeLayer[i]];

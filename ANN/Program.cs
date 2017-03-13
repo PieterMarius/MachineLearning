@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace MachineLearning
 {
@@ -15,24 +16,30 @@ namespace MachineLearning
             //ANNExample();
 
             int T = 1000;
-            int nFeature = 784;
-            int nLabel = 10;
+            int nFeature = 1;
+            int nLabel = 1;
             double momentum = 0.0;
-            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new SoftMax() };
-            IErrorFunction errorFunction = new CrossEntropyErrorFunc();
+            //IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new SoftMax() };
+            //IFunction[] type = new IFunction[] { new Tanh(0.666666, 1.7159, 0.0), new Tanh(0.666666, 1.7159, 0.0) };
+            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0) };
+            //IErrorFunction errorFunction = new CrossEntropyErrorFunc();
+            IErrorFunction errorFunction = new MediumSquareErrorFunction();
 
-            double[] eta = new double[] { 0.5, 0.5, 0.5, 0.5 };
-            double[] dropoutValue = new double[] { 1.0, 1.0, 1.0 };
-            int[] nodeLayer = new int[] { nFeature, 400, 20, nLabel };
+            double[] eta = new double[] { 0.9, 0.9, 0.9 };
+            double[] dropoutValue = new double[] { 1.0, 1.0 };
+            int[] nodeLayer = new int[] { nFeature, 7, nLabel };
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
 
-            readDataset("data.dat", new[] { "  " }, ref dataMatrix);
-            readDataset("tlabel.dat", new[] { " " }, ref labelMatrix);
+            readDataset("international-airline-passengers.csv", new[] { "  " }, ref dataMatrix);
+            readDataset("international-airline-passengers.csv", new[] { " " }, ref labelMatrix);
+
+            NormalizeDataColumn(ref dataMatrix);
+            NormalizeDataColumn(ref labelMatrix);
 
             RNN network = new RNN(
                 T,
-                8,
+                2,
                 nodeLayer,
                 eta,
                 momentum,
@@ -40,7 +47,14 @@ namespace MachineLearning
                 type,
                 errorFunction);
 
-            network.Train(dataMatrix, labelMatrix, 1, true);
+            int nTrial = 2000;
+            for (int i = 0; i < nTrial; i++)
+            {
+                network.Train(dataMatrix, labelMatrix, 1, true);
+                Console.WriteLine();
+            }
+
+            Console.ReadLine();
         }
 
         static void ANNExample()
@@ -67,6 +81,7 @@ namespace MachineLearning
 
             readDataset("testmnist.dat", new[] { "  " }, ref testDataMatrix);
             readDataset("tlabeltest.dat", new[] { " " }, ref testLabelMatrix);
+
 
             ANN network = new ANN(
                 T,
@@ -202,7 +217,7 @@ namespace MachineLearning
                 lineNumber++;
 
             file.DiscardBufferedData();
-            file.BaseStream.Seek(0, System.IO.SeekOrigin.Begin);
+            file.BaseStream.Seek(0, SeekOrigin.Begin);
 
             inputMatrix = new double[lineNumber][];
             
@@ -216,6 +231,33 @@ namespace MachineLearning
                     inputMatrix[index][i] = Double.Parse(str[i], CultureInfo.InvariantCulture);
                 }
                 index++;
+            }
+        }
+
+        static void NormalizeDataColumn(
+            ref double[][] data)
+        {
+            double max = double.MinValue;
+            double min = double.MaxValue;
+            for (int i = 0; i < data.Length; i++)
+            {
+                for (int j = 0; j < data[i].Length; j++)
+                {
+                    if (data[i][j] > max)
+                        max = data[i][j];
+                    if (data[i][j] < min)
+                        min = data[i][j];
+                }
+            }
+
+            double diff = max - min;
+            for (int i = 0; i < data.Length; i++)
+            {
+                for (int j = 0; j < data[i].Length; j++)
+                { 
+                    data[i][j] = (data[i][j] - min) / diff;
+                    //Console.WriteLine(data[i][j]);
+                }
             }
         }
 
