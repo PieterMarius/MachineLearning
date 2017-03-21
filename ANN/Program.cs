@@ -9,6 +9,97 @@ namespace MachineLearning
 {
     class Program
     {
+        #region Temporal Dataset Generation
+
+        //        Description
+        //-----------
+        //The input has 6 channels.At any time all channels are 0 except for one
+        //which has value 1 (i.e.the 6 channels are used for a one-hot encoding
+        //of a 6 possible symbols).
+        //The first two channels are reserved for symbols {A, B
+        //    }, the others
+        //to {c,d,e,f
+        //}. At one random position `p0` in [1, L/10]
+        //either A or B
+        //is showed.The same happens at a second position `p1` in [5*L/10, 6*L/10].
+        //At all other position a random symbol from { c,d,e,f } is used.
+        //At the end of the sequence one has to predict the order in which the
+        //symbols where provided(either AA, AB, BA or BB).
+
+        private static void GenerateDataset(
+            int timeLength,
+            int dim,
+            ref double[][] data,
+            ref double[][] label)
+        {
+            data = new double[dim][];
+            label = new double[dim][];
+            double tVar = timeLength * 0.1;
+
+            for (int i = 0; i < dim; i++)
+            {
+                data[i] = new double[6];
+                label[i] = new double[1];
+            }
+
+            for (int i = 0; i < dim / timeLength; i++)
+            {
+                int symbolType = Helper.GetRandom(0, 4);
+
+                label[(i * timeLength) + timeLength - 1][0] = symbolType / 4.0;
+                                
+                for (int j = 0; j < timeLength; j++)
+                {
+                    int index = (i * timeLength) + j;
+                    int rnd = Helper.GetRandom(2, 6);
+
+                    data[index][rnd] = 1.0;
+                }
+
+                int indexA;
+                if (tVar > 1)
+                    indexA = Helper.GetRandom(1, Convert.ToInt32(tVar));
+                else
+                    indexA = Helper.GetRandom(0, 1);
+
+                int indexB = Helper.GetRandom(Convert.ToInt32(5 * tVar), Convert.ToInt32(6 * tVar));
+
+                switch (symbolType)
+                {
+                    case 0:
+                        //AA
+                        data[(i * timeLength) + indexA] = new double[6];
+                        data[(i * timeLength) + indexA][0] = 1;
+                        data[(i * timeLength) + indexB] = new double[6];
+                        data[(i * timeLength) + indexB][0] = 1;
+                        break;
+                    case 1:
+                        //AB
+                        data[(i * timeLength) + indexA] = new double[6];
+                        data[(i * timeLength) + indexA][0] = 1;
+                        data[(i * timeLength) + indexB] = new double[6];
+                        data[(i * timeLength) + indexB][1] = 1;
+                        break;
+                    case 2:
+                        //BA
+                        data[(i * timeLength) + indexA] = new double[6];
+                        data[(i * timeLength) + indexA][1] = 1;
+                        data[(i * timeLength) + indexB] = new double[6];
+                        data[(i * timeLength) + indexB][0] = 1;
+                        break;
+                    case 3:
+                        //BB
+                        data[(i * timeLength) + indexA] = new double[6];
+                        data[(i * timeLength) + indexA][1] = 1;
+                        data[(i * timeLength) + indexB] = new double[6];
+                        data[(i * timeLength) + indexB][1] = 1;
+                        break;
+                }
+            }
+        }
+
+        #endregion
+
         static void Main(string[] args)
         {
 
@@ -21,25 +112,31 @@ namespace MachineLearning
             double momentum = 0.0;
             //IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0), new SoftMax() };
             //IFunction[] type = new IFunction[] { new Tanh(0.666666, 1.7159, 0.0), new Tanh(0.666666, 1.7159, 0.0) };
-            IFunction[] type = new IFunction[] { new Sigmoid(1.0, 0.0), new Sigmoid(1.0, 0.0) };
+            IFunction[] type = new IFunction[] { new Tanh(0.666666, 1.7159, 0.0), new Tanh(0.666666, 1.7159, 0.0) };
             //IErrorFunction errorFunction = new CrossEntropyErrorFunc();
             IErrorFunction errorFunction = new MediumSquareErrorFunction();
 
-            double[] eta = new double[] { 0.9, 0.9, 0.9 };
+            double[] eta = new double[] { 0.01, 0.01, 0.01 };
             double[] dropoutValue = new double[] { 1.0, 1.0 };
             int[] nodeLayer = new int[] { nFeature, 7, nLabel };
+            int timeLength = 20;
+
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
 
-            readDataset("international-airline-passengers.csv", new[] { "  " }, ref dataMatrix);
-            readDataset("international-airline-passengers.csv", new[] { " " }, ref labelMatrix);
 
-            NormalizeDataColumn(ref dataMatrix);
-            NormalizeDataColumn(ref labelMatrix);
+            //Training set
+            GenerateDataset(timeLength, 300, ref dataMatrix, ref labelMatrix);
+
+            //readDataset("international-airline-passengers.csv", new[] { "  " }, ref dataMatrix);
+            //readDataset("international-airline-passengers.csv", new[] { " " }, ref labelMatrix);
+
+            //NormalizeDataColumn(ref dataMatrix);
+            //NormalizeDataColumn(ref labelMatrix);
 
             RNN network = new RNN(
                 T,
-                2,
+                timeLength,
                 nodeLayer,
                 eta,
                 momentum,
@@ -47,11 +144,24 @@ namespace MachineLearning
                 type,
                 errorFunction);
 
-            int nTrial = 2000;
+            int nTrial = 70;
             for (int i = 0; i < nTrial; i++)
             {
                 network.Train(dataMatrix, labelMatrix, 1, true);
                 Console.WriteLine();
+            }
+
+            double[][] testDataMatrix = null;
+            double[][] testLabelMatrix = null;
+
+            //Network test
+            Console.WriteLine("TEST");
+            for (int i = 0; i < 50; i++)
+            {
+                GenerateDataset(timeLength, timeLength, ref testDataMatrix, ref testLabelMatrix);
+                double[] res = network.GetNetworkOutput(testDataMatrix);
+                Console.WriteLine("Res " + res[0]);
+                Console.WriteLine("Expected " + testLabelMatrix[timeLength - 1][0]);
             }
 
             Console.ReadLine();
