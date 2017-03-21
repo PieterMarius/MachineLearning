@@ -116,17 +116,16 @@ namespace MachineLearning
             //IErrorFunction errorFunction = new CrossEntropyErrorFunc();
             IErrorFunction errorFunction = new MediumSquareErrorFunction();
 
-            double[] eta = new double[] { 0.01, 0.01, 0.01 };
+            double[] eta = new double[] { 0.0005, 0.0005, 0.0005 };
             double[] dropoutValue = new double[] { 1.0, 1.0 };
             int[] nodeLayer = new int[] { nFeature, 7, nLabel };
-            int timeLength = 20;
+            int timeLength = 40;
 
             double[][] dataMatrix = null;
             double[][] labelMatrix = null;
-
-
+            
             //Training set
-            GenerateDataset(timeLength, 300, ref dataMatrix, ref labelMatrix);
+            GenerateDataset(timeLength, 800, ref dataMatrix, ref labelMatrix);
 
             //readDataset("international-airline-passengers.csv", new[] { "  " }, ref dataMatrix);
             //readDataset("international-airline-passengers.csv", new[] { " " }, ref labelMatrix);

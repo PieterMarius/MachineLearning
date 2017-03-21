@@ -158,7 +158,7 @@ namespace MachineLearning
                         if (checkErrorFromLastStep)
                             ForwardError(target[(index - 1) % input.Length], TimeStepSize - 1);
 
-                        if (i > Ephocs - 200)
+                        if (i > Ephocs - 100)
                         {
                             Console.WriteLine("index " + index);
                             Console.WriteLine("status " + NodeStatus[TimeStepSize - 1][Layer - 1][0]);
