@@ -247,6 +247,8 @@ namespace MachineLearning
         /// </summary>
         private void ExecuteBackpropagation()
         {
+            //TODO eliminare Delta[0]
+
             //Delta hidden layer
             for (int z = Layer - 2; z > 0; z--)
             {
